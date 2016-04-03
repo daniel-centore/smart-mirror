@@ -99,7 +99,8 @@ def togglepause():
     return
 
 #################################################################################
-# Requests access to Google for the user (this will pop open a web browser window)
+# Requests access to Google (Tasks + Calendar) for the user (this will pop open a web browser window)
+# If the user has already authenticated once, forces them to re-authenticate
 def addgoogle(userid):
     return
 
@@ -162,7 +163,7 @@ def setlocation(zip):
 # }
 def weather():
     # Example image http://openweathermap.org/img/w/04d.png
-    return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("filename.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
+    return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("04d.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
 
 class _User:
     zip = 06477     # TODO: Switch to 12180
@@ -182,6 +183,23 @@ def _savedata(users):
     global _users
     pickle.dump(users, open("save.p", "wb"))
 
+## Initialization code ##
+
+# GPIO
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BOARD)
+except:
+    print("This is not running on a Raspberry Pi :(")
+
+
+# If modifying these scopes, delete your previously saved credentials
+# at ~/.credentials/calendar-python-quickstart.json
+SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly'
+CLIENT_SECRET_FILE = 'client_secret.json'
+APPLICATION_NAME = 'Smart Mirror'
+
+## Test Script ##
 if __name__ == "__main__":
     print("BACKEND TEST SCRIPT")
     print("To get a prompt when done run:")
