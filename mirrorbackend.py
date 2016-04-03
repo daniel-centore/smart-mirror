@@ -1,102 +1,107 @@
+# pip install --upgrade google-api-python-client
+# pip install python-mpd2
+# pip install mopidy-gmusic
+
+
 # Lists all users. The person's userid is the index in the tuple.
 def listusers():
-	return ("Daniel", "Chris", "Briannah")
+    return ["Daniel", "Chris", "Briannah"]
 
 # Adds a user
 def adduser(username, pin):
-	if not canadduser():
-		return False
-	return True
+    if not canadduser():
+        return False
+    return True
 
 def validateuser(userid, pin):
-	return
+    return
 
 # Returns False if we are already full of users
 def canadduser():
-	return True
+    return True
 
 # Removes a given user
 def removeuser(userid):
-	return
+    return
 
 # Adds or replaces Spotify credentials for a user
 def addspotify(userid, username, password):
-	return
+    return
 
-# Clear's a person's Spotify credentials
+# Clear's a person's Spotify credeentials
 def removespotify(userid):
-	return
+    return
 
 # Adds or replaces Google Play credentials for a user
 # All Access is a boolean indicating whether or not the user pays
 def addgplay(userid, username, password, allaccess):
-	return
+    return
 
 # Clear's a person's Google Play credentials
 def removegplay(userid):
-	return
+    return
 
 # Lists all a user's playlists as strings
 def listplaylists(userid):
-	return {"Anime", "Ukrainian Folk", "Classic Rock", "Spongebob"}
+    return ["Anime", "Ukrainian Folk", "Classic Rock", "Spongebob"]
 
 # Lists all the songs in a playlist along with their metadata
 def listsongs(userid, playlistname):
-	return [
-		{u'album': u'Fullmetal Alchemist Brotherhood OST', \
-		u'x-albumuri': u'gmusic:album:4b567e9f45df6cffbc9793953d6cb6f9', \
-		u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
-		u'title': u'Rain (TV size)', \
-		u'track': u'1/31', \
-		u'artist': u'Akira Senju', \
-		u'albumartist': u'Akira Senju', \
-		u'file': u'gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe', \
-		u'time': u'90', \
-		u'date': u'2010'}, \
-		\
-		{u'album': u'Fullmetal Alchemist Brotherhood OST', \
-		u'x-albumuri': u'gmusic:album:85ed62b962fe26e0e0bd7ddc6d53328d', \
-		u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
-		u'title': u'Lullaby of Resembool', \
-		u'track': u'14/0', \
-		u'artist': u'Senju Akira', \
-		u'albumartist': u'Senju Akira', \
-		u'file': u'gmusic:track:93a8c5f9-93c8-3db0-8714-272cc759aa3a', \
-		u'time': u'133', \
-		u'date': u'2009'},
-	]
+    return [
+        {u'album': u'Fullmetal Alchemist Brotherhood OST', \
+        u'x-albumuri': u'gmusic:album:4b567e9f45df6cffbc9793953d6cb6f9', \
+        u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
+        u'title': u'Rain (TV size)', \
+        u'track': u'1/31', \
+        u'artist': u'Akira Senju', \
+        u'albumartist': u'Akira Senju', \
+        u'file': u'gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe', \
+        u'time': u'90', \
+        u'date': u'2010'}, \
+        \
+        {u'album': u'Fullmetal Alchemist Brotherhood OST', \
+        u'x-albumuri': u'gmusic:album:85ed62b962fe26e0e0bd7ddc6d53328d', \
+        u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
+        u'title': u'Lullaby of Resembool', \
+        u'track': u'14/0', \
+        u'artist': u'Senju Akira', \
+        u'albumartist': u'Senju Akira', \
+        u'file': u'gmusic:track:93a8c5f9-93c8-3db0-8714-272cc759aa3a', \
+        u'time': u'133', \
+        u'date': u'2009'},
+    ]
 
 # Plays a song and the rest of its playlist in order
 # ex. playsong(0, "Anime", "gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe")
 def playsong(userid, playlistname, file):
-	return
+    return
 
 # Shuffles a playlist
 def shuffleplaylist(userid, playlistname):
-	return
+    return
 
 # Toggles whether or not we are paused
 def togglepause():
-	return
+    return
 
 #################################################################################
 # Requests access to Google for the user (this will pop open a web browser window)
 def addgoogle(userid):
-	return
+    return
 
 # Returns a person's tasks
 def gettasks(userid):
-	return {"Buy milk", "Go to store", "Call grandma"}
+    return ["Buy milk", "Go to store", "Call grandma"]
 
 # Returns a person's calendar appointments
 def getcalendar(userid):
-	return {"Meeting @ 9am", "Robotics competition", "Swim meet"}
+    return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
 
 #################################################################################
 
 # Sets user's location to a zip code
 def setlocation(zip):
-	return
+    return
 
 # {
 #    "coord":{
@@ -142,10 +147,37 @@ def setlocation(zip):
 #    "cod":200
 # }
 def weather():
-	# Example image http://openweathermap.org/img/w/04d.png
-	return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("filename.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
+    # Example image http://openweathermap.org/img/w/04d.png
+    return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("filename.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
 
 import mpd
+import pickle
+
+class _User:
+    zip = 06477     # TODO: Switch to 12180
+    def __init__(self, name, password):
+        self.name = name
+        self.password = password
+        self.gplay = None
+        self.spotify = None
+
+
+def _loaddata():
+    try:
+        return pickle.load(open("save.p", "rb"))
+    except:
+        return []
+
+def _savedata(users):
+    global _users
+    pickle.dump(users, open("save.p", "wb"))
+
+if __name__ == "__main__":
+    print BACKEND TEST SCRIPT
+    print To get a prompt when done run:
+    print python -i mirrorbackend.py
+    print
+    
 
 # client = mpd.MPDClient(use_unicode = True)
 # client.connect("localhost", 6600)
@@ -159,7 +191,3 @@ import mpd
 # http://api.openweathermap.org/data/2.5/weather?zip=12180,us&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
 # http://api.openweathermap.org/data/2.5/forecast?id=5141502&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
 # http://openweathermap.org/weather-conditions
-
-# Spotify credentials
-# Username:
-# Password:
