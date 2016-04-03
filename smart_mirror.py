@@ -8,27 +8,27 @@ HEIGHT = 1000
 BORDER = 10
 
 def onKeyPress(event):
-	if event.char == "1":
-		var.set("ONE")
+    if event.char == "1":
+        var.set("ONE")
 
 def placeLabel(text, x, y, anch):
-	var = StringVar()
-	label = Label(root, textvariable=var, relief=FLAT, background='black', foreground="white", bd=0, font=("Helvetica", 12), anchor=W, justify=LEFT)
-	var.set(text)
-	label.pack()
-	label.place(x=x,y=y,anchor=anch)
-	return label
+    var = StringVar()
+    label = Label(root, textvariable=var, relief=FLAT, background='black', foreground="white", bd=0, font=("Helvetica", 12), anchor=W, justify=LEFT)
+    var.set(text)
+    label.pack()
+    label.place(x=x,y=y,anchor=anch)
+    return label
 
 labels = None
 def updateLabels(names):
-	global labels
-	if (labels != None):
-		for x in labels:
-			x.destroy()
-	labels = []
-	LOWER = 20
-	for i in range(0, 6):
-		labels.append(placeLabel(names[i], i * 128 + 128, HEIGHT - LOWER, N))
+    global labels
+    if (labels != None):
+        for x in labels:
+            x.destroy()
+    labels = []
+    LOWER = 20
+    for i in range(0, 6):
+        labels.append(placeLabel(names[i], i * 128 + 128, HEIGHT - LOWER, N))
 
 root = tk.Tk()
 root.attributes('-fullscreen', True)
