@@ -8,8 +8,13 @@ HEIGHT = 1000
 BORDER = 10
 
 def onKeyPress(event):
-    if event.char == "1":
-        var.set("ONE")
+    if event.char >= "1" and event.char <= "6":
+        handleButton(int(event.char))
+        
+def handleButton(button):
+    """You should handle button from 1-6 here
+    I will call this function from the backend with the actual rPi buttons
+    """
 
 def placeLabel(text, x, y, anch):
     var = StringVar()
