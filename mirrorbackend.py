@@ -2,6 +2,20 @@
 # pip install python-mpd2
 # pip install mopidy-gmusic
 
+from __future__ import print_function
+import httplib2
+import os
+
+from apiclient import discovery
+import oauth2client
+from oauth2client import client
+from oauth2client import tools
+
+import datetime
+
+import mpd
+import pickle
+
 
 # Lists all users. The person's userid is the index in the tuple.
 def listusers():
@@ -150,9 +164,6 @@ def weather():
     # Example image http://openweathermap.org/img/w/04d.png
     return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("filename.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
 
-import mpd
-import pickle
-
 class _User:
     zip = 06477     # TODO: Switch to 12180
     def __init__(self, name, password):
@@ -160,7 +171,6 @@ class _User:
         self.password = password
         self.gplay = None
         self.spotify = None
-
 
 def _loaddata():
     try:
@@ -173,11 +183,10 @@ def _savedata(users):
     pickle.dump(users, open("save.p", "wb"))
 
 if __name__ == "__main__":
-    print BACKEND TEST SCRIPT
-    print To get a prompt when done run:
-    print python -i mirrorbackend.py
-    print
-    
+    print("BACKEND TEST SCRIPT")
+    print("To get a prompt when done run:")
+    print("python -i mirrorbackend.py")
+    print()
 
 # client = mpd.MPDClient(use_unicode = True)
 # client.connect("localhost", 6600)
