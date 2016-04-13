@@ -2,57 +2,86 @@
 # pip install python-mpd2
 # pip install mopidy-gmusic
 
+# Python 2 thru 3 Support
 from __future__ import print_function
+from builtins import input
+
+# oauth
 import httplib2
 import os
-
 from apiclient import discovery
 import oauth2client
 from oauth2client import client
 from oauth2client import tools
-
 import datetime
 
 import mpd
-import pickle
+import subprocess
 
+MAX_USERS = 6
 
 # Lists all users. The person's userid is the index in the tuple.
 def listusers():
-    return ["Daniel", "Chris", "Briannah"]
+    global _users
+    result = []
+    
+    for x in _users:
+        result.append(x.store.name)
+    
+    return result
 
-# Adds a user
-def adduser(username, pin):
-    if not canadduser():
+# Adds a user with their 4 digit pin
+# Returns true if successful; False otherwise
+def adduser(name, password):
+    global _users
+    
+    try:
+        password = int(password)
+    except:
+        print("Password not integer")
         return False
+    
+    if not canadduser():
+        print("Users list full")
+        return False
+    
+    _users.append(_User(name, password))
+    _savedata()
     return True
+
+# Returns False if we are already full of users
+def canadduser():
+    global MAX_USERS, _users
+    return len(_users) < MAX_USERS
 
 def validateuser(userid, pin):
     return
 
-# Returns False if we are already full of users
-def canadduser():
-    return True
-
 # Removes a given user
 def removeuser(userid):
+    _savedata()
     return
 
 # Adds or replaces Spotify credentials for a user
 def addspotify(userid, username, password):
+    _savedata()
     return
 
 # Clear's a person's Spotify credeentials
 def removespotify(userid):
+    _savedata()
     return
 
 # Adds or replaces Google Play credentials for a user
 # All Access is a boolean indicating whether or not the user pays
-def addgplay(userid, username, password, allaccess):
+def addgplay(userid, username, password, all_access):
+    _users[userid].store.gmusic = {"username" : username, "password" : password, "all_access" : all_access}
+    _savedata()
     return
 
 # Clear's a person's Google Play credentials
 def removegplay(userid):
+    _savedata()
     return
 
 # Lists all a user's playlists as strings
@@ -102,6 +131,7 @@ def togglepause():
 # Requests access to Google (Tasks + Calendar) for the user (this will pop open a web browser window)
 # If the user has already authenticated once, forces them to re-authenticate
 def addgoogle(userid):
+    _savedata()
     return
 
 # Returns a person's tasks
@@ -116,6 +146,8 @@ def getcalendar(userid):
 
 # Sets user's location to a zip code
 def setlocation(zip):
+    _UserSave.zip = zip
+    _savedata()
     return
 
 # {
@@ -164,31 +196,88 @@ def setlocation(zip):
 def weather():
     # Example image http://openweathermap.org/img/w/04d.png
     return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("04d.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
+    
+def logout():
+    global _users
+    for user in _users:
+        if user.mopidy != None:
+            user.mopidy.kill()
+            user.mopidy = None
 
-class _User:
+class _UserSave:
     zip = 06477     # TODO: Switch to 12180
     def __init__(self, name, password):
         self.name = name
         self.password = password
-        self.gplay = None
-        self.spotify = None
+        self.spotify = None # {username = "fred", password = "flnstone"}
+        self.gmusic = None  # {username = "fred", password = "flnstone", all_access = True}
 
-def _loaddata():
-    try:
-        return pickle.load(open("save.p", "rb"))
-    except:
-        return []
+class _User:
+    def __init__(self, name, password):
+        self.store = _UserSave(name, password)
+        self.mopidy = None
+        self.mopidyport = 0
 
-def _savedata(users):
+def _savedata():
     global _users
-    pickle.dump(users, open("save.p", "wb"))
+    
+    
+def _updateMopidy(userid):
+    global _users
+    global _mopidyPort
+    
+    _mopidyPort += 1
+    
+    user = _users[userid]
+    store = user.store
 
-## Initialization code ##
+    if user.mopidy != None:
+        user.mopidy.kill()
+    
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    configpath = os.path.join(currentpath, "mopidy%d.conf" % userid)
+    
+    with open(configpath, "w") as text_file:
+        text_file.write("[spotify]\n")
+        if store.spotify != None:
+            text_file.write("username = %s\n" % store.spotify['username'])
+            text_file.write("password = %s\n" % store.spotify['password'])
+        else:
+            text_file.write("enabled = false\n")
+        text_file.write("\n")
+        
+        text_file.write("[gmusic]\n")
+        if store.gmusic != None:
+            text_file.write("username = %s\n" % store.gmusic['username'])
+            text_file.write("password = %s\n" % store.gmusic['password'])
+            text_file.write("all_access = %s\n" % ("true" if store.gmusic['all_access'] else "false"))
+            text_file.write("radio_stations_as_playlists = false\n")
+        else:
+            text_file.write("enabled = false\n")
+        text_file.write("\n")
+        
+        text_file.write("[mpd]\n")
+        text_file.write("enabled = true\n")
+        text_file.write("hostname = 127.0.0.1\n")
+        text_file.write("port = %d\n" % _mopidyPort)
+        text_file.write("password =\n")
+        text_file.write("max_connections = 20\n")
+        text_file.write("connection_timeout = 60\n")
+        text_file.write("zeroconf = Mopidy MPD server on\n")
+        text_file.write("command_blacklist = listall,listallinfo\n")
+        text_file.write("default_playlist_scheme = m3u\n")
+        text_file.write("\n")
+        text_file.write("[http]\n")
+        text_file.write("enabled = false\n")
+        text_file.close()
+        
+        user.mopidy = subprocess.Popen(["mopidy", "--config", configpath])
+        user.mopidyport = _mopidyPort
 
 # GPIO
 try:
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BOARD)
+    # https://www.raspberrypi.org/learning/getting-started-with-gpio-zero/worksheet/
+    from gpiozero import Button
 except:
     print("This is not running on a Raspberry Pi :(")
 
@@ -199,12 +288,48 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleap
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Smart Mirror'
 
+# Initialization
+
+_users = None
+_mopidyPort = 6600
+_linux = False
+
+def initialize():
+    global _users, _linux
+    _users = []
+    
+    from sys import platform as _platform
+    _linux = sys.platform.startswith('linux')
+    
+    if _linux:
+        subprocess.call(["killall", "mopidy"])      # Always start clean
+
+initialize()
+
 ## Test Script ##
 if __name__ == "__main__":
     print("BACKEND TEST SCRIPT")
-    print("To get a prompt when done run:")
-    print("python -i mirrorbackend.py")
     print()
+    
+    # for use during testing to keep credentials out of source control
+    import credentials
+    
+    # Add users and credentials
+    adduser("Daniel", 1234)
+    adduser("Chris", 5678)
+    adduser("Both", 0123)
+    addgplay(0, "drdanielfc@gmail.com", credentials.gplaypass(), True)
+    _updateMopidy(0)
+    
+    _updateMopidy(1)
+    addspotify(1, "christopher@pybus.us", credentials.spotifypass(), True)
+    
+    addgplay(2, "drdanielfc@gmail.com", credentials.gplaypass(), True)
+    _updateMopidy(2)
+    addspotify(2, "christopher@pybus.us", credentials.spotifypass(), True)
+    _updateMopidy(2)
+    
+    
 
 # client = mpd.MPDClient(use_unicode = True)
 # client.connect("localhost", 6600)
