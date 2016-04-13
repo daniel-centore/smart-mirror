@@ -1,6 +1,7 @@
 # pip install --upgrade google-api-python-client
 # pip install python-mpd2
 # pip install mopidy-gmusic
+# pip install requests
 
 # Python 2 thru 3 Support
 from __future__ import print_function
@@ -14,9 +15,12 @@ import oauth2client
 from oauth2client import client
 from oauth2client import tools
 import datetime
-
+import time
 import mpd
 import subprocess
+import random
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 MAX_USERS = 6
 
@@ -55,20 +59,24 @@ def canadduser():
     return len(_users) < MAX_USERS
 
 def validateuser(userid, pin):
-    return
+    global _users
+    return _users[userid].store.password == pin
 
-# Removes a given user
+# Removes a given user TODO
 def removeuser(userid):
+    global _users
+    _users.pop(userid)
     _savedata()
-    return
 
 # Adds or replaces Spotify credentials for a user
 def addspotify(userid, username, password):
+    _users[userid].store.spotify = {"username" : username, "password" : password}
     _savedata()
     return
 
 # Clear's a person's Spotify credeentials
 def removespotify(userid):
+    _users[userid].store.spotify = None
     _savedata()
     return
 
@@ -81,64 +89,89 @@ def addgplay(userid, username, password, all_access):
 
 # Clear's a person's Google Play credentials
 def removegplay(userid):
+    _users[userid].store.gmusic = None
     _savedata()
     return
 
 # Lists all a user's playlists as strings
 def listplaylists(userid):
-    return ["Anime", "Ukrainian Folk", "Classic Rock", "Spongebob"]
+    if _mpdClient(userid) == None:
+        return []
+    
+    rawData = _mpdClient(userid).listplaylists()
+    playlists = []
+    
+    for playlist in rawData:
+        playlists.append(playlist['playlist'])
+    
+    return playlists
 
-# Lists all the songs in a playlist along with their metadata
+# Lists all the songs in a playlist along with their metadata TODO
 def listsongs(userid, playlistname):
-    return [
-        {u'album': u'Fullmetal Alchemist Brotherhood OST', \
-        u'x-albumuri': u'gmusic:album:4b567e9f45df6cffbc9793953d6cb6f9', \
-        u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
-        u'title': u'Rain (TV size)', \
-        u'track': u'1/31', \
-        u'artist': u'Akira Senju', \
-        u'albumartist': u'Akira Senju', \
-        u'file': u'gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe', \
-        u'time': u'90', \
-        u'date': u'2010'}, \
-        \
-        {u'album': u'Fullmetal Alchemist Brotherhood OST', \
-        u'x-albumuri': u'gmusic:album:85ed62b962fe26e0e0bd7ddc6d53328d', \
-        u'x-albumimage': u'https://lh3.googleusercontent.com/iwxS307YhAYKz8PkxJMFFTPJL2virvBZyHr9deR64SY7z3TJxrS6BOFx8RU', \
-        u'title': u'Lullaby of Resembool', \
-        u'track': u'14/0', \
-        u'artist': u'Senju Akira', \
-        u'albumartist': u'Senju Akira', \
-        u'file': u'gmusic:track:93a8c5f9-93c8-3db0-8714-272cc759aa3a', \
-        u'time': u'133', \
-        u'date': u'2009'},
-    ]
+    try:
+        return _mpdClient(userid).listplaylistinfo(playlistname)
+    except Exception:
+        pass
+    return []
 
-# Plays a song and the rest of its playlist in order
+# Plays a song and shuffles the rest of the playlist
 # ex. playsong(0, "Anime", "gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe")
 def playsong(userid, playlistname, file):
-    return
+    try:
+        client = _mpdClient(userid);
+        client.stop()
+        client.clear()
+        
+        client.add(file)
+        
+        songs = listplaylistinfo(playlistname)
+        random.shuffle(songs)
+        
+        for song in songs:
+            if song['file'] != file:
+                client.add(song['file'])
+        
+        client.play(0)
+    except Exception:
+        pass
 
 # Shuffles a playlist
 def shuffleplaylist(userid, playlistname):
-    return
+    try:
+        client = _mpdClient(userid);
+        client.stop()
+        client.clear()
+        
+        songs = listplaylistinfo(playlistname)
+        random.shuffle(songs)
+        
+        for song in songs:
+            client.add(song['file'])
+        
+        client.play(0)
+    except Exception:
+        pass
 
 # Toggles whether or not we are paused
 def togglepause():
-    return
+    try:
+        _mpdClient(userid).pause()
+    except Exception:
+        pass
 
 #################################################################################
 # Requests access to Google (Tasks + Calendar) for the user (this will pop open a web browser window)
 # If the user has already authenticated once, forces them to re-authenticate
+# TODO
 def addgoogle(userid):
     _savedata()
     return
 
-# Returns a person's tasks
+# Returns a person's tasks TODO
 def gettasks(userid):
     return ["Buy milk", "Go to store", "Call grandma"]
 
-# Returns a person's calendar appointments
+# Returns a person's calendar appointments TODO
 def getcalendar(userid):
     return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
 
@@ -150,6 +183,7 @@ def setlocation(zip):
     _savedata()
     return
 
+# TODO
 # {
 #    "coord":{
 #       "lon":-73.69,
@@ -197,13 +231,6 @@ def weather():
     # Example image http://openweathermap.org/img/w/04d.png
     return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("04d.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
     
-def logout():
-    global _users
-    for user in _users:
-        if user.mopidy != None:
-            user.mopidy.kill()
-            user.mopidy = None
-
 class _UserSave:
     zip = 06477     # TODO: Switch to 12180
     def __init__(self, name, password):
@@ -217,11 +244,37 @@ class _User:
         self.store = _UserSave(name, password)
         self.mopidy = None
         self.mopidyport = 0
+        self.mpdclient = None
 
-def _savedata():
+def _mpdClient(userid):
     global _users
     
+    user = _users[userid]
     
+    if user.mopidyport == 0:
+        return None
+    
+    if user.mpdclient != None:
+        try:
+            user.mpdclient.close()
+            user.mpdclient.kill()
+        except Exception:
+            pass
+    
+    try:
+        client = mpd.MPDClient(use_unicode = True)
+        client.connect("localhost", user.mopidyport)
+        user.mpdclient = client
+    except Exception:
+        user.mpdclient = None
+    
+    return user.mpdclient
+
+# Saves user data to a file TODO
+def _savedata():
+    global _users
+
+# Kill's a user's mopidy instance (if any) and loads a new one with the most up to date info
 def _updateMopidy(userid):
     global _users
     global _mopidyPort
@@ -252,6 +305,8 @@ def _updateMopidy(userid):
             text_file.write("password = %s\n" % store.gmusic['password'])
             text_file.write("all_access = %s\n" % ("true" if store.gmusic['all_access'] else "false"))
             text_file.write("radio_stations_as_playlists = false\n")
+            text_file.write("radio_stations_count = 1\n")
+            text_file.write("radio_tracks_count = 1\n")
         else:
             text_file.write("enabled = false\n")
         text_file.write("\n")
@@ -271,7 +326,8 @@ def _updateMopidy(userid):
         text_file.write("enabled = false\n")
         text_file.close()
         
-        user.mopidy = subprocess.Popen(["mopidy", "--config", configpath])
+        fh = open("NUL", "w")
+        user.mopidy = subprocess.Popen(["mopidy", "-q", "--config", configpath], stdout = fh, stderr = fh)
         user.mopidyport = _mopidyPort
 
 # GPIO
@@ -299,12 +355,19 @@ def initialize():
     _users = []
     
     from sys import platform as _platform
-    _linux = sys.platform.startswith('linux')
+    _linux = _platform.startswith('linux')
     
     if _linux:
         subprocess.call(["killall", "mopidy"])      # Always start clean
+        time.sleep(3)
 
 initialize()
+
+def test(testname, val, nominal):
+    if val == nominal:
+        print("%-50s[PASS]" % testname)
+    else:
+        print("%-50s[!!FAIL!!]" % testname)
 
 ## Test Script ##
 if __name__ == "__main__":
@@ -314,22 +377,37 @@ if __name__ == "__main__":
     # for use during testing to keep credentials out of source control
     import credentials
     
-    # Add users and credentials
+    # Add users
     adduser("Daniel", 1234)
     adduser("Chris", 5678)
     adduser("Both", 0123)
+    
+    # Add users' credentials
     addgplay(0, "drdanielfc@gmail.com", credentials.gplaypass(), True)
     _updateMopidy(0)
     
     _updateMopidy(1)
-    addspotify(1, "christopher@pybus.us", credentials.spotifypass(), True)
+    # addspotify(1, "christopher@pybus.us", credentials.spotifypass())
     
-    addgplay(2, "drdanielfc@gmail.com", credentials.gplaypass(), True)
+    # addgplay(2, "drdanielfc@gmail.com", credentials.gplaypass(), True)
     _updateMopidy(2)
-    addspotify(2, "christopher@pybus.us", credentials.spotifypass(), True)
+    # addspotify(2, "christopher@pybus.us", credentials.spotifypass())
     _updateMopidy(2)
     
+    addgoogle(0)
+    addgoogle(2)
     
+    # Test logging in as each user:
+    test("Logging in user 0 with correct password", validateuser(0, 1234), True)
+    test("Logging in user 0 with incorrect password", validateuser(0, 1235), False)
+    test("Logging in user 1 with correct password", validateuser(1, 5678), True)
+    test("Logging in user 1 with incorrect password", validateuser(1, 1678), False)
+    test("Logging in user 2 with correct password", validateuser(2, 0123), True)
+    test("Logging in user 2 with incorrect password", validateuser(2, 3221), False)
+    
+    # Testing list playlists
+    print("Listing user 0's playlists:")
+    print(listplaylists(0))
 
 # client = mpd.MPDClient(use_unicode = True)
 # client.connect("localhost", 6600)
