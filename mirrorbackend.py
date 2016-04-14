@@ -58,6 +58,7 @@ def canadduser():
     global MAX_USERS, _users
     return len(_users) < MAX_USERS
 
+# Validates a user's pin
 def validateuser(userid, pin):
     global _users
     return _users[userid].store.password == pin
@@ -240,7 +241,8 @@ def setlocation(zip):
 def weather():
     # Example image http://openweathermap.org/img/w/04d.png
     return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("04d.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
-    
+
+# All of a user's persistent data
 class _UserSave:
     zip = 06477     # TODO: Switch to 12180
     def __init__(self, name, password):
@@ -249,6 +251,7 @@ class _UserSave:
         self.spotify = None # {username = "fred", password = "flnstone"}
         self.gmusic = None  # {username = "fred", password = "flnstone", all_access = True}
 
+# All of a user's data
 class _User:
     def __init__(self, name, password):
         self.store = _UserSave(name, password)
@@ -256,6 +259,8 @@ class _User:
         self.mopidyport = 0
         self.mpdclient = None
 
+# Obtains a fresh client for mpd
+# You should call this once in each function that uses it, and then reuse it within the function
 def _mpdClient(userid):
     global _users
     
@@ -354,12 +359,16 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleap
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Smart Mirror'
 
-# Initialization
-
+# Users array
 _users = None
+
+# The port of the last created mopidy instance
 _mopidyPort = 6600
+
+# Whether or not we are currently running on Linux
 _linux = False
 
+# Handles initial load procedure
 def initialize():
     global _users, _linux
     _users = []
@@ -371,13 +380,13 @@ def initialize():
         subprocess.call(["killall", "mopidy"])      # Always start clean
         time.sleep(3)
 
-initialize()
-
 def test(testname, val, nominal):
     if val == nominal:
         print("%-50s[PASS]" % testname)
     else:
         print("%-50s[!!FAIL!!]" % testname)
+
+initialize()
 
 ## Test Script ##
 if __name__ == "__main__":
