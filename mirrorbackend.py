@@ -62,7 +62,7 @@ def validateuser(userid, pin):
     global _users
     return _users[userid].store.password == pin
 
-# Removes a given user TODO
+# Removes a given user
 def removeuser(userid):
     global _users
     _users.pop(userid)
@@ -70,12 +70,13 @@ def removeuser(userid):
 
 # Adds or replaces Spotify credentials for a user
 def addspotify(userid, username, password):
+    global _users
     _users[userid].store.spotify = {"username" : username, "password" : password}
     _savedata()
-    return
 
 # Clear's a person's Spotify credeentials
 def removespotify(userid):
+    global _users
     _users[userid].store.spotify = None
     _savedata()
     return
@@ -83,12 +84,14 @@ def removespotify(userid):
 # Adds or replaces Google Play credentials for a user
 # All Access is a boolean indicating whether or not the user pays
 def addgplay(userid, username, password, all_access):
+    global _users
     _users[userid].store.gmusic = {"username" : username, "password" : password, "all_access" : all_access}
     _savedata()
     return
 
 # Clear's a person's Google Play credentials
 def removegplay(userid):
+    global _users
     _users[userid].store.gmusic = None
     _savedata()
     return
@@ -106,7 +109,7 @@ def listplaylists(userid):
     
     return playlists
 
-# Lists all the songs in a playlist along with their metadata TODO
+# Lists all the songs in a playlist along with their metadata
 def listsongs(userid, playlistname):
     try:
         return _mpdClient(userid).listplaylistinfo(playlistname)
@@ -124,7 +127,7 @@ def playsong(userid, playlistname, file):
         
         client.add(file)
         
-        songs = listplaylistinfo(playlistname)
+        songs = client.listplaylistinfo(playlistname)
         random.shuffle(songs)
         
         for song in songs:
@@ -142,7 +145,7 @@ def shuffleplaylist(userid, playlistname):
         client.stop()
         client.clear()
         
-        songs = listplaylistinfo(playlistname)
+        songs = client.listplaylistinfo(playlistname)
         random.shuffle(songs)
         
         for song in songs:
@@ -153,9 +156,16 @@ def shuffleplaylist(userid, playlistname):
         pass
 
 # Toggles whether or not we are paused
-def togglepause():
+def pause(userid):
     try:
         _mpdClient(userid).pause()
+    except Exception:
+        pass
+
+# Jumps to next song
+def next(userid):
+    try:
+        _mpdClient(userid).next()
     except Exception:
         pass
 
@@ -266,7 +276,7 @@ def _mpdClient(userid):
         client.connect("localhost", user.mopidyport)
         user.mpdclient = client
     except Exception:
-        user.mpdclient = None
+        return None
     
     return user.mpdclient
 
@@ -386,13 +396,13 @@ if __name__ == "__main__":
     addgplay(0, "drdanielfc@gmail.com", credentials.gplaypass(), True)
     _updateMopidy(0)
     
-    _updateMopidy(1)
     # addspotify(1, "christopher@pybus.us", credentials.spotifypass())
+    # _updateMopidy(1)
     
     # addgplay(2, "drdanielfc@gmail.com", credentials.gplaypass(), True)
-    _updateMopidy(2)
+    # _updateMopidy(2)
     # addspotify(2, "christopher@pybus.us", credentials.spotifypass())
-    _updateMopidy(2)
+    # _updateMopidy(2)
     
     addgoogle(0)
     addgoogle(2)
@@ -406,8 +416,10 @@ if __name__ == "__main__":
     test("Logging in user 2 with incorrect password", validateuser(2, 3221), False)
     
     # Testing list playlists
-    print("Listing user 0's playlists:")
-    print(listplaylists(0))
+    print("Listing user 0's playlists...")
+    # while len(listplaylists(0)) == 0:
+    #     time.sleep(10)
+    # pp.pprint(listplaylists(0))
 
 # client = mpd.MPDClient(use_unicode = True)
 # client.connect("localhost", 6600)
