@@ -1,7 +1,13 @@
-# pip install --upgrade google-api-python-client
-# pip install python-mpd2
-# pip install mopidy-gmusic
-# pip install requests
+"""
+Backend API for the IED Team UU Smart Mirror
+Author: Daniel Centore
+
+Some prerequisites:
+pip install --upgrade google-api-python-client
+pip install python-mpd2
+pip install mopidy-gmusic
+pip install requests
+"""
 
 # Python 2 thru 3 Support
 from __future__ import print_function
@@ -15,14 +21,25 @@ import oauth2client
 from oauth2client import client
 from oauth2client import tools
 import datetime
+import rfc3339      # for date object -> date string
+import iso8601      # for date string -> date object
 import time
 import mpd
 import subprocess
 import random
+import json
+from json import JSONDecoder
+import uuid
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 MAX_USERS = 6
+
+# Clears all users
+def clearusers():
+    global _users
+    del _users[:]
+    _savedata()
 
 # Lists all users. The person's userid is the index in the tuple.
 def listusers():
@@ -49,7 +66,8 @@ def adduser(name, password):
         print("Users list full")
         return False
     
-    _users.append(_User(name, password))
+    myid = str(uuid.uuid4())
+    _users.append(_User(name, password, myid))
     _savedata()
     return True
 
@@ -72,7 +90,7 @@ def removeuser(userid):
 # Adds or replaces Spotify credentials for a user
 def addspotify(userid, username, password):
     global _users
-    _users[userid].store.spotify = {"username" : username, "password" : password}
+    _users[userid].store.spotify = {"type" : "spotify", "username" : username, "password" : password}
     _savedata()
 
 # Clear's a person's Spotify credeentials
@@ -86,7 +104,7 @@ def removespotify(userid):
 # All Access is a boolean indicating whether or not the user pays
 def addgplay(userid, username, password, all_access):
     global _users
-    _users[userid].store.gmusic = {"username" : username, "password" : password, "all_access" : all_access}
+    _users[userid].store.gmusic = {"type" : "gplay", "username" : username, "password" : password, "all_access" : all_access}
     _savedata()
     return
 
@@ -173,26 +191,128 @@ def next(userid):
 #################################################################################
 # Requests access to Google (Tasks + Calendar) for the user (this will pop open a web browser window)
 # If the user has already authenticated once, forces them to re-authenticate
-# TODO
 def addgoogle(userid):
-    _savedata()
-    return
+    global _users
+    
+    home_dir = os.getcwd()
+    credential_dir = os.path.join(home_dir, '.credentials')
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir, 'creds_%s.json' % _users[userid].store.myid)
+
+    store = oauth2client.file.Storage(credential_path)
+    # credentials = store.get()
+    
+    flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+    flow.user_agent = APPLICATION_NAME
+    if flags:
+        credentials = tools.run_flow(flow, store, flags)
+    else: # Needed only for compatibility with Python 2.6
+        credentials = tools.run(flow, store)
+    # print('Storing credentials to ' + credential_path)
+    
+    return credentials
+
+def removegoogle(userid):
+    home_dir = os.getcwd()
+    credential_dir = os.path.join(home_dir, '.credentials')
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir, 'creds_%s.json' % _users[userid].store.myid)
+    if os.path.isfile(credential_path):
+        os.remove(credential_path)
+
+def getgoogle(userid):
+    global _users
+    
+    home_dir = os.getcwd()
+    credential_dir = os.path.join(home_dir, '.credentials')
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir, 'creds_%s.json' % _users[userid].store.myid)
+
+    store = oauth2client.file.Storage(credential_path)
+    credentials = store.get()
+    if not credentials or credentials.invalid:
+        return None
+    
+    return credentials
 
 # Returns a person's tasks TODO
 def gettasks(userid):
+    credentials = getgoogle(userid)
+    
+    if credentials == None:
+        return []
+    
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('tasks', 'v1', http=http)
+
+    result = []
+    
+    taskResults = service.tasklists().list(maxResults=10).execute()
+    items = taskResults.get('items', [])
+    if not items:
+        return None         # No tasks found
+    else:
+        for item in items:
+            pp.pprint(item)
     return ["Buy milk", "Go to store", "Call grandma"]
 
 # Returns a person's calendar appointments TODO
 def getcalendar(userid):
-    return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
+    credentials = getgoogle(userid)
+    
+    if credentials == None:
+        return []
+    
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('calendar', 'v3', http=http)
+
+    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    # print('Getting the upcoming 10 events')
+    eventsResult = service.events().list(
+        calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,
+        orderBy='startTime').execute()
+    events = eventsResult.get('items', [])
+    
+    result = []
+    
+    import datetime as dt
+    if not events:
+        return result       # No events found
+    for event in events:
+        # start = event['start'].get('dateTime', event['start'].get('date'))
+        start = event['start']
+        if 'date' in start:
+            start = start['date']
+            start = dt.datetime.strptime(start, '%Y-%m-%d').strftime("%a %-d %b (All day)")
+        elif 'dateTime' in start:
+            start = start['dateTime']
+            start = get_date_object(start).strftime("%a %-d %b (%-I:%M %p)")
+        else:
+            start = "ERROR"
+        
+        result.append("%s: %s" % (start, event['summary']))
+    # return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
+    return result
+
+def get_date_object(date_string):
+    return iso8601.parse_date(date_string)
+
+def get_date_string(date_object):
+    return rfc3339.rfc3339(date_object)
 
 #################################################################################
 
 # Sets user's location to a zip code
 def setlocation(zip):
-    _UserSave.zip = zip
+    global _users
+    
+    for user in _users:
+        user.zip = zip
+
     _savedata()
-    return
 
 # TODO
 # {
@@ -244,20 +364,40 @@ def weather():
 
 # All of a user's persistent data
 class _UserSave:
-    zip = 06477     # TODO: Switch to 12180
-    def __init__(self, name, password):
+    def __init__(self, name, password, myid):
         self.name = name
         self.password = password
+        self.myid = myid
+        self.zip = 06477
         self.spotify = None # {username = "fred", password = "flnstone"}
         self.gmusic = None  # {username = "fred", password = "flnstone", all_access = True}
 
 # All of a user's data
 class _User:
-    def __init__(self, name, password):
-        self.store = _UserSave(name, password)
+    def __init__(self, name, password, myid):
+        self.store = _UserSave(name, password, myid)
         self.mopidy = None
         self.mopidyport = 0
         self.mpdclient = None
+
+def user_from_json(json_object):
+    # Handle gmusic and spotify accounts
+    if 'type' in json_object:
+        return json_object
+    
+    # Handle the main array
+    if 'name' in json_object:
+        user = _User(json_object['name'], json_object['password'], json_object['myid'])
+        user.store.spotify = json_object['spotify']
+        user.store.gmusic = json_object['gmusic']
+        user.store.zip = json_object['zip']
+        return user
+    
+    print("SOMETHING WENT WRONG 201604131027PM:")
+    global pp
+    pp.pprint(json_object)
+    print()
+    return None
 
 # Obtains a fresh client for mpd
 # You should call this once in each function that uses it, and then reuse it within the function
@@ -285,9 +425,20 @@ def _mpdClient(userid):
     
     return user.mpdclient
 
-# Saves user data to a file TODO
+# Saves user data to a file
 def _savedata():
     global _users
+    userstores = []
+    for user in _users:
+        userstores.append(user.store.__dict__)
+    with open('data.conf', 'w') as outfile:
+        json.dump(userstores, outfile)
+
+def _loaddata():
+    global _users
+    with open('data.conf', 'r') as myfile:
+        data = myfile.read().strip()
+    _users = JSONDecoder(object_hook = user_from_json).decode(data)
 
 # Kill's a user's mopidy instance (if any) and loads a new one with the most up to date info
 def _updateMopidy(userid):
@@ -353,6 +504,12 @@ except:
     print("This is not running on a Raspberry Pi :(")
 
 
+try:
+    import argparse
+    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+except ImportError:
+    flags = None
+
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly'
@@ -379,6 +536,13 @@ def initialize():
     if _linux:
         subprocess.call(["killall", "mopidy"])      # Always start clean
         time.sleep(3)
+    
+    # Load data from file
+    _loaddata()
+    
+    # Create mopidy instances
+    for i, val in enumerate(_users):
+        _updateMopidy(i)
 
 def test(testname, val, nominal):
     if val == nominal:
@@ -397,13 +561,13 @@ if __name__ == "__main__":
     import credentials
     
     # Add users
-    adduser("Daniel", 1234)
-    adduser("Chris", 5678)
-    adduser("Both", 0123)
-    
-    # Add users' credentials
-    addgplay(0, "drdanielfc@gmail.com", credentials.gplaypass(), True)
-    _updateMopidy(0)
+    # adduser("Daniel", 1234)
+    # adduser("Chris", 5678)
+    # adduser("Both", 0123)
+    #
+    # # Add users' credentials
+    # addgplay(0, "drdanielfc@gmail.com", credentials.gplaypass(), True)
+    # _updateMopidy(0)
     
     # addspotify(1, "christopher@pybus.us", credentials.spotifypass())
     # _updateMopidy(1)
@@ -413,8 +577,8 @@ if __name__ == "__main__":
     # addspotify(2, "christopher@pybus.us", credentials.spotifypass())
     # _updateMopidy(2)
     
-    addgoogle(0)
-    addgoogle(2)
+    # addgoogle(0)
+    # addgoogle(2)
     
     # Test logging in as each user:
     test("Logging in user 0 with correct password", validateuser(0, 1234), True)
@@ -425,7 +589,7 @@ if __name__ == "__main__":
     test("Logging in user 2 with incorrect password", validateuser(2, 3221), False)
     
     # Testing list playlists
-    print("Listing user 0's playlists...")
+    # print("Listing user 0's playlists...")
     # while len(listplaylists(0)) == 0:
     #     time.sleep(10)
     # pp.pprint(listplaylists(0))
