@@ -33,7 +33,7 @@ import uuid
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-MAX_USERS = 6
+MAX_USERS = 5
 
 # Clears all users
 def clearusers():
@@ -92,13 +92,14 @@ def addspotify(userid, username, password):
     global _users
     _users[userid].store.spotify = {"type" : "spotify", "username" : username, "password" : password}
     _savedata()
+    _updateMopidy(userid)
 
 # Clear's a person's Spotify credeentials
 def removespotify(userid):
     global _users
     _users[userid].store.spotify = None
     _savedata()
-    return
+    _updateMopidy(userid)
 
 # Adds or replaces Google Play credentials for a user
 # All Access is a boolean indicating whether or not the user pays
@@ -106,14 +107,20 @@ def addgplay(userid, username, password, all_access):
     global _users
     _users[userid].store.gmusic = {"type" : "gplay", "username" : username, "password" : password, "all_access" : all_access}
     _savedata()
-    return
+    _updateMopidy(userid)
 
 # Clear's a person's Google Play credentials
 def removegplay(userid):
     global _users
     _users[userid].store.gmusic = None
     _savedata()
-    return
+    _updateMopidy(userid)
+
+# listplaylists(0)
+# shuffleplaylist(0, playlistname)
+# listsongs(0, playlistname)
+# playsong(0, playlistname, file)
+
 
 # Lists all a user's playlists as strings
 def listplaylists(userid):
@@ -238,7 +245,8 @@ def getgoogle(userid):
     
     return credentials
 
-# Returns a person's tasks TODO
+# Returns a person's tasks
+# TODO: Fix ordering!
 def gettasks(userid):
     credentials = getgoogle(userid)
     
@@ -250,14 +258,19 @@ def gettasks(userid):
 
     result = []
     
-    taskResults = service.tasklists().list(maxResults=10).execute()
-    items = taskResults.get('items', [])
+    tasks = service.tasks().list(tasklist='@default').execute()
+    items = tasks.get('items', [])
     if not items:
-        return None         # No tasks found
+        return []         # No tasks found
     else:
         for item in items:
-            pp.pprint(item)
-    return ["Buy milk", "Go to store", "Call grandma"]
+            if 'due' in item and len(item['title'].strip()) > 0:
+                due = get_date_object(item['due']).strftime("%a %-d %b")
+                result.append("%s: %s" % (due, item['title']))
+            elif len(item['title'].strip()) > 0:
+                result.append(item['title'])
+    return result
+    # return ["Buy milk", "Go to store", "Call grandma"]
 
 # Returns a person's calendar appointments TODO
 def getcalendar(userid):
@@ -296,6 +309,37 @@ def getcalendar(userid):
         result.append("%s: %s" % (start, event['summary']))
     # return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
     return result
+    
+def getemail(userid):
+    credentials = getgoogle(userid)
+
+    if credentials == None:
+        return []
+
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('gmail', 'v1', http=http)
+    
+    response = service.users().messages().list(userId='me', q='in:inbox', maxResults=10).execute()
+    
+    messages = []
+    if 'messages' in response:
+        messages.extend(response['messages'])
+
+    while ('nextPageToken' in response) and (len(messages) < 10):
+        page_token = response['nextPageToken']
+        response = service.users().messages().list(userId='me', q='', pageToken=page_token).execute()
+        messages.extend(response['messages'])
+    
+    result = []
+    for msg in messages:
+        message = service.users().messages().get(userId='me', id=msg['id']).execute()
+        
+        for header in message['payload']['headers']:
+            if header['name'].lower() == 'subject':
+                result.append({'title':header['value'], 'snippet':message['snippet']})
+    
+    return result
+    
 
 def get_date_object(date_string):
     return iso8601.parse_date(date_string)
@@ -453,7 +497,8 @@ def _updateMopidy(userid):
     if user.mopidy != None:
         user.mopidy.kill()
     
-    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # currentpath = os.path.dirname(os.path.realpath(__file__))
+    currentpath = os.getcwd()
     configpath = os.path.join(currentpath, "mopidy%d.conf" % userid)
     
     with open(configpath, "w") as text_file:
@@ -512,7 +557,7 @@ except ImportError:
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
-SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly'
+SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/gmail.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Smart Mirror'
 
@@ -581,12 +626,12 @@ if __name__ == "__main__":
     # addgoogle(2)
     
     # Test logging in as each user:
-    test("Logging in user 0 with correct password", validateuser(0, 1234), True)
-    test("Logging in user 0 with incorrect password", validateuser(0, 1235), False)
-    test("Logging in user 1 with correct password", validateuser(1, 5678), True)
-    test("Logging in user 1 with incorrect password", validateuser(1, 1678), False)
-    test("Logging in user 2 with correct password", validateuser(2, 0123), True)
-    test("Logging in user 2 with incorrect password", validateuser(2, 3221), False)
+    # test("Logging in user 0 with correct password", validateuser(0, 1234), True)
+    # test("Logging in user 0 with incorrect password", validateuser(0, 1235), False)
+    # test("Logging in user 1 with correct password", validateuser(1, 5678), True)
+    # test("Logging in user 1 with incorrect password", validateuser(1, 1678), False)
+    # test("Logging in user 2 with correct password", validateuser(2, 0123), True)
+    # test("Logging in user 2 with incorrect password", validateuser(2, 3221), False)
     
     # Testing list playlists
     # print("Listing user 0's playlists...")

@@ -4,3 +4,4 @@ credentials.py
 mopidy*.conf
 NUL
 data.conf
+.credentials/*
