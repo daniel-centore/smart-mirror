@@ -11,6 +11,7 @@ from CalendarFrame import *
 from SettingsFrames import *
 from EmailFrame import *
 from MusicFrame import *
+import functools
 
 root = Tk()
 currentScreen = "Home"
@@ -20,33 +21,68 @@ passcodeEntryStr = ""
 selectedUser = 0;
 
 def onKeyPress(event):
+	handleEvent(event.char, event.keycode)
 	
+def button1():
+	global root
+	root.after(0, hbut1)
+def button2():
+	global root
+	root.after(0, hbut2)
+def button3():
+	global root
+	root.after(0, hbut3)
+def button4():
+	global root
+	root.after(0, hbut4)
+def button5():
+	global root
+	root.after(0, hbut5)
+def button6():
+	global root
+	root.after(0, hbut6)
+
+def hbut1():
+	handleEvent('1')
+def hbut2():
+	handleEvent('2')
+def hbut3():
+	handleEvent('3')
+def hbut4():
+	handleEvent('4')
+def hbut5():
+	handleEvent('5')
+def hbut6():
+	handleEvent('6')
+
+def handleEvent(eid, keycode=0):
+	# print keycode
 	global currentScreen, passcodeEntryNum, passcodeEntryStr, selectedUser, userPasscodes, currentWidget
 	
-	if(currentScreen == "Home" and (event.char == "1" or event.char == "2" or event.char == "3" or event.char == "4" or event.char == "5")):
-		sU = int(event.char) - 1
+	if(currentScreen == "Home" and (eid == "1" or eid == "2" or eid == "3" or eid == "4" or eid == "5")):
+		sU = int(eid) - 1
 		if sU < len(mirrorbackend.getUsers()):
 			selectedUser = sU
 			buttons.enterPasscodeScreen();
 			currentScreen = "Passcode"
-	elif(currentScreen == "Home" and event.char == "6"):
+	elif(currentScreen == "Home" and eid == "6"):
 		currentScreen = "GenSettings"
 		genSettings.place(x=0,y=0);
 		buttons.enterSettingsScreen();
 	elif(currentScreen == "Passcode"):
-		if(event.char == '1'):
+		if(eid == '1'):
 			passcodeEntryStr += "a";
 			passcodeEntryNum+=1
-		elif(event.char == '2'):
+		elif(eid == '2'):
 			passcodeEntryStr += "b";
 			passcodeEntryNum+=1
-		elif(event.char == '3'):
+		elif(eid == '3'):
 			passcodeEntryStr += "c";
 			passcodeEntryNum+=1
-		elif(event.char == '4'):
+		elif(eid == '4'):
 			passcodeEntryStr += "d";
 			passcodeEntryNum+=1
-		elif(event.char == '5'):
+		elif(eid == '5'):
 			passcodeEntryStr += "e";
 			passcodeEntryNum+=1
 		
@@ -66,7 +102,7 @@ def onKeyPress(event):
 			passcodeEntryStr = ""
 	elif(currentScreen == "User"):
 		if(currentWidget == ""):
-			if(event.char == "5"):
+			if(eid == "5"):
 				currentScreen = "Home"
 				buttons.enterHomeScreen()
 				updateWidgets()
@@ -75,25 +111,25 @@ def onKeyPress(event):
 				calendar.clearCalendar();
 				music.clearMusic();
 				logout()
-			elif(event.char == "3"):
+			elif(eid == "3"):
 				currentScreen = "User"
 				currentWidget = "Music"
 				music.reload()
 				buttons.enterMusicWidget()
-			elif(event.char == "6"):
+			elif(eid == "6"):
 				currentScreen = "UserSettings"
 				userSettings.place(x=0,y=0);
 				buttons.enterSettingsScreen();
 		elif(currentWidget == "Music"):
-			if(event.char == "1"):
+			if(eid == "1"):
 				music.startPause(mirrorbackend.getUsers()[selectedUser])
-			elif(event.char == "2"):
+			elif(eid == "2"):
 				music.nextSong(mirrorbackend.getUsers()[selectedUser])
-			elif(event.char == "4"):
+			elif(eid == "4"):
 				music.moveArrowUp()
-			elif(event.char == "3"):
+			elif(eid == "3"):
 				music.moveArrowDown()
-			elif(event.char == "5"):
+			elif(eid == "5"):
 				if music.select(mirrorbackend.getUsers()[selectedUser]) == False:
 					# If back button has been activated
 					currentScreen = "User"
@@ -101,27 +137,63 @@ def onKeyPress(event):
 					buttons.enterUserScreen();
 		
 	elif(currentScreen == "GenSettings"):
-		if(event.char == "1"):
+		if(eid == "1"):
 			genSettings.moveArrowUp()
-		elif(event.char == "2"):
+		elif(eid == "2"):
 			genSettings.moveArrowDown()
-		#elif(event.char == "3"):
-			#select
-		elif(event.char == "5"):
+		elif(eid == "3"):
+			# genSettings.select()
+			pass
+		elif(eid == "5"):
 			genSettings.place_forget()
 			buttons.enterHomeScreen()
 			currentScreen = "Home"
+		elif(eid == "6"):
+			genSettings.place_forget()
+			buttons.enterHomeScreen()
+			blackscreen.place(x=0,y=0);
+			currentScreen = "BlackG";
+		elif(keycode == 36): #enter button
+			ret = genSettings.enter()
+			if(ret != None):
+				mirrorbackend.adduser(ret[0], ret[1])
+		elif(keycode == 22): #backspace
+			genSettings.backspace()
+		else:
+			genSettings.keyPress(eid)
 	elif(currentScreen == "UserSettings"):
-		if(event.char == "1"):
+		if(eid == "1"):
 			userSettings.moveArrowUp()
-		elif(event.char == "2"):
+		elif(eid == "2"):
 			userSettings.moveArrowDown()
-		#elif(event.char == "3"):
-			#select
-		elif(event.char == "5"):
+		elif(eid == "3"):
+			# userSettings.select()
+			pass
+		elif(eid == "5"):
 			userSettings.place_forget()
 			buttons.enterUserScreen();
 			currentScreen = "User"
+		elif(eid == "6"):
+			userSettings.place_forget()
+			buttons.enterUserScreen()
+			blackscreen.place(x=0,y=0);
+			currentScreen = "BlackU";
+		elif(keycode == 13): #enter button
+			ret = userSettings.enter()
+			if(ret != None):
+				mirrorbackend.getUsers()[selectedUser].changePasscode(ret)
+		elif(keycode == 8): #backspace
+			userSettings.backspace()
+		else:
+			userSettings.keyPress(eid)
+	elif(currentScreen == "BlackU"):
+		if(eid == "6"):
+			blackscreen.place_forget()
+			currentScreen = "User"
+	elif(currentScreen == "BlackG"):
+		if(eid == "6"):
+			blackscreen.place_forget()
+			currentScreen = "Home"
 
 def logout():
 	import mirrorbackend
@@ -177,6 +249,31 @@ if __name__ == "__main__":
 	import mirrorbackend
 	mirrorbackend.initialize()
 	
+	# GPIO
+	try:
+		from gpiozero import Button
+		
+		buttonA = Button(21)
+		buttonA.when_pressed = button1
+		
+		buttonB = Button(16)
+		buttonB.when_pressed = button2
+		
+		buttonC = Button(12)
+		buttonC.when_pressed = button3
+		
+		buttonD = Button(25)
+		buttonD.when_pressed = button4
+		
+		buttonE = Button(23)
+		buttonE.when_pressed = button5
+		
+		buttonF = Button(18)
+		buttonF.when_pressed = button6
+		
+	except:
+	    print("This is not running on a Raspberry Pi")
+	
 	initRoot();
 	
 	global clock;
@@ -211,13 +308,10 @@ if __name__ == "__main__":
 	userSettings = UserSettingsFrame(root, "User Settings")
 	userSettings.place(x=1080, y=1920);
 	
+	global blackscreen;
+	blackscreen = BlackScreen(root, "Black Screen")
+	blackscreen.place(x=1080, y=1920);
+	
 	root.after(500, updateTime)
 	root.mainloop() #Starts the Tkinter and onKeyPress event
-	
-	
-	
-	
-	
-	
-	
 	

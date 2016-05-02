@@ -162,5 +162,7 @@ class MusicFrame(Frame):
         
     def updatePlaying(self):
         song = self.currentuser.currentsong()
+        if len(song) == 0:
+            return
         curr = "%s - %s" % (song.get("title"), song.get("artist"))
         self.currentlyPlaying.set(curr)

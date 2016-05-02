@@ -27,85 +27,101 @@ class _User:
         self.mopidyport = 0
         self.mpdclient = None
 
+def makeUser(name, password, id):
+    return _User(name, password, id)
+
 '''
 Shim for data access by the frontend
 '''
 class UserObject(object):
     
     def __init__(self, user, id):
-        self._user = user
-        self._username = user.store.name
-        self._passcode = user.store.password
-        self._clock = user.store.clock
-        self._weather = user.store.weather
-        self._email = user.store.email
-        self._calendar = user.store.calendar
-        self._music = user.store.music
+        self.user = user
+        # self._username = user.store.name
+        # self._passcode = user.store.password
+        # self._clock = user.store.clock
+        # self._weather = user.store.weather
+        # self._email = user.store.email
+        # self._calendar = user.store.calendar
+        # self._music = user.store.music
         self.id = id
     
     # TODO MAKE THESE UPDATE THE STORE
     def username():
         def fget(self):
-            return self._username
+            return self.user.store.name
         def fset(self, value):
-            self._username = value
+            self.user.store.name = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     username = property(**username())
     
     def passcode():
         def fget(self):
-            return self._passcode
+            return self.user.store.password
         def fset(self, value):
-            self._passcode = value
+            self.user.store.password = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     passcode = property(**passcode())
     
     def clock():
         def fget(self):
-            return self._clock
+            return self.user.store.clock
         def fset(self, value):
-            self._clock = value
+            self.user.store.clock = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     clock = property(**clock())
 
     def weather():
         def fget(self):
-            return self._weather
+            return self.user.store.weather
         def fset(self, value):
-            self._weather = value
+            self.user.store.weather = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     weather = property(**weather())
 
     def email():
         def fget(self):
-            return self._email
+            return self.user.store.email
         def fset(self, value):
-            self._email = value
+            self.user.store.email = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     email = property(**email())
 
     def calendar():
         def fget(self):
-            return self._calendar
+            return self.user.store.calendar
         def fset(self, value):
-            self._calendar = value
+            self.user.store.calendar = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     calendar = property(**calendar())
 
     def music():
         def fget(self):
-            return self._music
+            return self.user.store.music
         def fset(self, value):
-            self._music = value
+            self.user.store.music = value
+            import mirrorbackend
+            mirrorbackend._savedata()
         return locals()
     music = property(**music())
     
     def getName(self):
-        warnings.warn(
-            "You should be using 'username' instead of 'getName()''",
-            DeprecationWarning
-        )
         return self.username
+    
+    def changePasscode(self, passcode):
+		self.passcode = passcode;
     
     #Name, Start Time, End Time
     #Integer start and end times only, military time

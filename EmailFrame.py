@@ -49,4 +49,4 @@ class EmailFrame(Frame):
         
         self.emailLabel = StringVar();
         Label(self, textvariable=self.emailLabel, font=("SFNS Display", 13), bg="black", foreground="gray", anchor=E).place(y=0, x=0)
-        self.emailLabel.set("Email")
+        # self.emailLabel.set("Email")

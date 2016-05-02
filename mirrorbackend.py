@@ -74,7 +74,8 @@ def adduser(name, password):
         return False
     
     myid = str(uuid.uuid4())
-    usr = _User(name, password, myid);
+    # usr = _User(name, password, myid);
+    usr = makeUser(name, password, myid)
     if len(_users) > 0:
         usr.store.zip = _users[0].store.zip
     _users.append(usr)
@@ -628,13 +629,6 @@ def _loaddata():
     with open('data.conf', 'r') as myfile:
         data = myfile.read().strip()
     _users = JSONDecoder(object_hook = user_from_json).decode(data)
-
-# GPIO
-try:
-    # https://www.raspberrypi.org/learning/getting-started-with-gpio-zero/worksheet/
-    from gpiozero import Button
-except:
-    print("This is not running on a Raspberry Pi :(")
 
 
 try:
