@@ -5,3 +5,5 @@ mopidy*.conf
 NUL
 data.conf
 .credentials/*
+.project
+.pydevproject

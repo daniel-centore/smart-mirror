@@ -7,6 +7,9 @@ pip install --upgrade google-api-python-client
 pip install python-mpd2
 pip install mopidy-gmusic
 pip install requests
+
+San Fransisco ttf
+Metrocons ttf (weather)
 """
 
 # Python 2 thru 3 Support
@@ -20,7 +23,7 @@ from apiclient import discovery
 import oauth2client
 from oauth2client import client
 from oauth2client import tools
-import datetime
+from datetime import date, datetime, timedelta
 import rfc3339      # for date object -> date string
 import iso8601      # for date string -> date object
 import time
@@ -32,6 +35,8 @@ from json import JSONDecoder
 import uuid
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
+from UserObject import *
+import urllib2
 
 MAX_USERS = 5
 
@@ -51,23 +56,27 @@ def listusers():
     
     return result
 
+def getUsers():
+    global _users
+    result = []
+    for i in range(0, len(_users)):
+        result.append(UserObject(_users[i], i))
+    return result
+
 # Adds a user with their 4 digit pin
 # Returns true if successful; False otherwise
 def adduser(name, password):
     global _users
-    
-    try:
-        password = int(password)
-    except:
-        print("Password not integer")
-        return False
     
     if not canadduser():
         print("Users list full")
         return False
     
     myid = str(uuid.uuid4())
-    _users.append(_User(name, password, myid))
+    usr = _User(name, password, myid);
+    if len(_users) > 0:
+        usr.store.zip = _users[0].store.zip
+    _users.append(usr)
     _savedata()
     return True
 
@@ -272,7 +281,7 @@ def gettasks(userid):
     return result
     # return ["Buy milk", "Go to store", "Call grandma"]
 
-# Returns a person's calendar appointments TODO
+# Returns a person's calendar appointments
 def getcalendar(userid):
     credentials = getgoogle(userid)
     
@@ -282,10 +291,11 @@ def getcalendar(userid):
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
 
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    startLooking = (datetime.utcnow() - timedelta(days=1)).isoformat() + 'Z' # 'Z' indicates UTC time
+    
     # print('Getting the upcoming 10 events')
     eventsResult = service.events().list(
-        calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,
+        calendarId='primary', timeMin=startLooking, maxResults=40, singleEvents=True,
         orderBy='startTime').execute()
     events = eventsResult.get('items', [])
     
@@ -296,20 +306,48 @@ def getcalendar(userid):
         return result       # No events found
     for event in events:
         # start = event['start'].get('dateTime', event['start'].get('date'))
-        start = event['start']
-        if 'date' in start:
-            start = start['date']
-            start = dt.datetime.strptime(start, '%Y-%m-%d').strftime("%a %-d %b (All day)")
-        elif 'dateTime' in start:
-            start = start['dateTime']
-            start = get_date_object(start).strftime("%a %-d %b (%-I:%M %p)")
-        else:
-            start = "ERROR"
+        start = parseGcalDate(event['start'])
+        end = parseGcalDate(event['end'])
         
-        result.append("%s: %s" % (start, event['summary']))
+        startDate = start
+        endDate = end
+        today = date.today()
+        if isinstance(startDate, datetime):
+            startDate = startDate.date()
+        if isinstance(endDate, datetime):
+            endDate = endDate.date()
+        
+        # If some portion of the event takes place today
+        if startDate <= today and endDate >= today:
+            if startDate < today:
+                start = datetime.combine(today, datetime.min.time())
+            if endDate > today:
+                end = datetime.combine(today, datetime.max.time())
+            
+            result.append(feCalEvent(start, end, event['summary']))
+            # result.append("%s: %s" % (start, event['summary']))
     # return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
     return result
-    
+
+def feCalEvent(start, end, text):
+    if not (isinstance(start, datetime) and isinstance(end, datetime)):
+        return (text, 0, 24)
+    return (text, roundHour(start.hour, start.minute), roundHour(end.hour, end.minute))
+
+def roundHour(hour, min):
+    return hour + (min / 60.0)
+
+def parseGcalDate(d):
+    if 'date' in d:
+        d = d['date']
+        d = datetime.strptime(d, '%Y-%m-%d')#.strftime("%a %-d %b (All day)")
+    elif 'dateTime' in d:
+        d = d['dateTime']
+        d = get_date_object(d)#.strftime("%a %-d %b (%-I:%M %p)")
+    else:
+        d = None
+    return d
+
 def getemail(userid):
     credentials = getgoogle(userid)
 
@@ -354,94 +392,68 @@ def setlocation(zip):
     global _users
     
     for user in _users:
-        user.zip = zip
+        user.store.zip = zip
 
     _savedata()
 
-# TODO
-# {
-#    "coord":{
-#       "lon":-73.69,
-#       "lat":42.73
-#    },
-#    "weather":[
-#       {
-#          "id":804,
-#          "main":"Clouds",
-#          "description":"overcast clouds",
-#          "icon":"04d"
-#       }
-#    ],
-#    "base":"stations",
-#    "main":{
-#       "temp":66.9,
-#       "pressure":1006,
-#       "humidity":43,
-#       "temp_min":64.4,
-#       "temp_max":69.8
-#    },
-#    "visibility":16093,
-#    "wind":{
-#       "speed":17.22,
-#       "deg":180,
-#       "gust":10.8
-#    },
-#    "clouds":{
-#       "all":90
-#    },
-#    "dt":1459464840,
-#    "sys":{
-#       "type":1,
-#       "id":2088,
-#       "message":0.0634,
-#       "country":"US",
-#       "sunrise":1459420569,
-#       "sunset":1459466486
-#    },
-#    "id":5141502,
-#    "name":"Troy",
-#    "cod":200
-# }
+
+# Weather
+# http://api.openweathermap.org/data/2.5/weather?zip=12180,us&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
+# http://api.openweathermap.org/data/2.5/forecast?id=5141502&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
+# http://openweathermap.org/weather-conditions
 def weather():
+    zip = 6477
+    if len(_users) > 0:
+        zip = _users[0].store.zip
+    zip = "%05d" % zip
     # Example image http://openweathermap.org/img/w/04d.png
-    return {"main" : "Clouds", "description" : "overcast clouds", "image" : Image.open("04d.png"), "temp" : 66.9, "windspeed" : 17.22, "clouds" : 90, "City" : "Troy"}
-
-# All of a user's persistent data
-class _UserSave:
-    def __init__(self, name, password, myid):
-        self.name = name
-        self.password = password
-        self.myid = myid
-        self.zip = 06477
-        self.spotify = None # {username = "fred", password = "flnstone"}
-        self.gmusic = None  # {username = "fred", password = "flnstone", all_access = True}
-
-# All of a user's data
-class _User:
-    def __init__(self, name, password, myid):
-        self.store = _UserSave(name, password, myid)
-        self.mopidy = None
-        self.mopidyport = 0
-        self.mpdclient = None
-
-def user_from_json(json_object):
-    # Handle gmusic and spotify accounts
-    if 'type' in json_object:
-        return json_object
+    source = urllib2.urlopen("http://api.openweathermap.org/data/2.5/weather?zip=%s,us&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial" % zip).read()
+    js1 = json.loads(source)
+    cityid = js1['id']
     
-    # Handle the main array
-    if 'name' in json_object:
-        user = _User(json_object['name'], json_object['password'], json_object['myid'])
-        user.store.spotify = json_object['spotify']
-        user.store.gmusic = json_object['gmusic']
-        user.store.zip = json_object['zip']
-        return user
+    source = urllib2.urlopen("http://api.openweathermap.org/data/2.5/forecast?id=%d&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial" % cityid).read()
+    js = json.loads(source)
     
-    print("SOMETHING WENT WRONG 201604131027PM:")
-    global pp
-    pp.pprint(json_object)
-    print()
-    return None
+    today = date.today()
+    lastSample = date(2000, 1, 1)
+    result = []
+    items = js['list'][:]
+    items.insert(0, js1)
+    for sample in items:
+        curDate = datetime.fromtimestamp(sample['dt']).date()
+        if curDate > lastSample:
+            lastSample = curDate
+            result.append({"icon": convert_icon(sample['weather'][0]['icon']), "temp": sample['main']['temp'], "hi": sample['main']['temp_max'], "lo": sample['main']['temp_min'], "date": curDate})
+        else:
+            result[-1]['hi'] = max(sample['main']['temp_max'], result[-1]['hi'])
+            result[-1]['lo'] = min(sample['main']['temp_min'], result[-1]['lo'])
+    
+    for i in range(1, len(result)):
+        result[i]['temp'] = (result[i]['lo'] + result[i]['hi']) / 2
+    
+    return result
+
+def convert_icon(owm):
+    return {
+        '01d': 'B',
+        '01n': 'C',
+        '02d': 'H',
+        '02n': 'I',
+        '03d': 'N',
+        '03n': 'N',
+        '04d': 'Y',
+        '04n': 'Y',
+        '09d': 'Q',
+        '09n': 'Q',
+        '10d': 'R',
+        '10n': 'R',
+        '11d': '0',
+        '11n': '0',
+        '13d': 'W',
+        '13n': 'W',
+        '50d': 'J',
+        '50n': 'K'
+    }.get(owm, ")")
 
 # Obtains a fresh client for mpd
 # You should call this once in each function that uses it, and then reuse it within the function
@@ -468,21 +480,6 @@ def _mpdClient(userid):
         return None
     
     return user.mpdclient
-
-# Saves user data to a file
-def _savedata():
-    global _users
-    userstores = []
-    for user in _users:
-        userstores.append(user.store.__dict__)
-    with open('data.conf', 'w') as outfile:
-        json.dump(userstores, outfile)
-
-def _loaddata():
-    global _users
-    with open('data.conf', 'r') as myfile:
-        data = myfile.read().strip()
-    _users = JSONDecoder(object_hook = user_from_json).decode(data)
 
 # Kill's a user's mopidy instance (if any) and loads a new one with the most up to date info
 def _updateMopidy(userid):
@@ -540,6 +537,22 @@ def _updateMopidy(userid):
         fh = open("NUL", "w")
         user.mopidy = subprocess.Popen(["mopidy", "-q", "--config", configpath], stdout = fh, stderr = fh)
         user.mopidyport = _mopidyPort
+    
+    
+# Saves user data to a file
+def _savedata():
+    global _users
+    userstores = []
+    for user in _users:
+        userstores.append(user.store.__dict__)
+    with open('data.conf', 'w') as outfile:
+        json.dump(userstores, outfile)
+
+def _loaddata():
+    global _users
+    with open('data.conf', 'r') as myfile:
+        data = myfile.read().strip()
+    _users = JSONDecoder(object_hook = user_from_json).decode(data)
 
 # GPIO
 try:
@@ -585,9 +598,9 @@ def initialize():
     # Load data from file
     _loaddata()
     
-    # Create mopidy instances
-    for i, val in enumerate(_users):
-        _updateMopidy(i)
+    # Create mopidy instances TODO: ADD THIS BACK
+    # for i, val in enumerate(_users):
+    #     _updateMopidy(i)
 
 def test(testname, val, nominal):
     if val == nominal:
@@ -595,10 +608,34 @@ def test(testname, val, nominal):
     else:
         print("%-50s[!!FAIL!!]" % testname)
 
-initialize()
+def user_from_json(json_object):
+    # Handle gmusic and spotify accounts
+    if 'type' in json_object:
+        return json_object
+    
+    from UserObject import _User
+    # Handle the main array
+    if 'name' in json_object:
+        user = _User(json_object['name'], json_object['password'], json_object['myid'])
+        user.store.spotify = json_object['spotify']
+        user.store.gmusic = json_object['gmusic']
+        user.store.zip = json_object['zip']
+        user.store.clock = (json_object['clock'] if 'clock' in json_object else user.store.clock)
+        user.store.clock = (json_object['weather'] if 'weather' in json_object else user.store.clock)
+        user.store.clock = (json_object['email'] if 'email' in json_object else user.store.clock)
+        user.store.clock = (json_object['calendar'] if 'calendar' in json_object else user.store.clock)
+        user.store.clock = (json_object['music'] if 'music' in json_object else user.store.clock)
+        return user
+    
+    print("SOMETHING WENT WRONG:")
+    global pp
+    pp.pprint(json_object)
+    print()
+    return None
 
 ## Test Script ##
 if __name__ == "__main__":
+    initialize()
     print("BACKEND TEST SCRIPT")
     print()
     
@@ -646,8 +683,3 @@ if __name__ == "__main__":
 # Client ID: 828223958708-vivbe6v9c8kal11i66jifs6k6b6j7mej.apps.googleusercontent.com
 # Client secret: qhB-ZeJiCqqO8CS0zWlrq_6b
 # google
-
-# Weather
-# http://api.openweathermap.org/data/2.5/weather?zip=12180,us&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
-# http://api.openweathermap.org/data/2.5/forecast?id=5141502&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
-# http://openweathermap.org/weather-conditions
