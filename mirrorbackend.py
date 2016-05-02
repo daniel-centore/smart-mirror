@@ -37,6 +37,7 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 from UserObject import *
 import urllib2
+from timeout import timeout
 
 MAX_USERS = 5
 
@@ -132,6 +133,7 @@ def removegplay(userid):
 
 
 # Lists all a user's playlists as strings
+@timeout()
 def listplaylists(userid):
     if _mpdClient(userid) == None:
         return []
@@ -145,6 +147,7 @@ def listplaylists(userid):
     return playlists
 
 # Lists all the songs in a playlist along with their metadata
+@timeout()
 def listsongs(userid, playlistname):
     try:
         return _mpdClient(userid).listplaylistinfo(playlistname)
@@ -152,8 +155,26 @@ def listsongs(userid, playlistname):
         pass
     return []
 
+@timeout()
+def currentsong(userid):
+    try:
+        return _mpdClient(userid).currentsong()
+    except Exception:
+        pass
+    return []
+
+@timeout()
+def stopall():
+    global _users
+    try:
+        for i, user in enumerate(_users):
+            _mpdClient(i).stop()
+    except Exception:
+        pass
+
 # Plays a song and shuffles the rest of the playlist
 # ex. playsong(0, "Anime", "gmusic:track:37f9bdd9-dd2c-390b-9c72-c6c9e7353fbe")
+@timeout()
 def playsong(userid, playlistname, file):
     try:
         client = _mpdClient(userid);
@@ -174,6 +195,7 @@ def playsong(userid, playlistname, file):
         pass
 
 # Shuffles a playlist
+@timeout()
 def shuffleplaylist(userid, playlistname):
     try:
         client = _mpdClient(userid);
@@ -191,6 +213,7 @@ def shuffleplaylist(userid, playlistname):
         pass
 
 # Toggles whether or not we are paused
+@timeout()
 def pause(userid):
     try:
         _mpdClient(userid).pause()
@@ -198,6 +221,7 @@ def pause(userid):
         pass
 
 # Jumps to next song
+@timeout()
 def next(userid):
     try:
         _mpdClient(userid).next()
@@ -256,6 +280,7 @@ def getgoogle(userid):
 
 # Returns a person's tasks
 # TODO: Fix ordering!
+@timeout()
 def gettasks(userid):
     credentials = getgoogle(userid)
     
@@ -282,6 +307,7 @@ def gettasks(userid):
     # return ["Buy milk", "Go to store", "Call grandma"]
 
 # Returns a person's calendar appointments
+@timeout()
 def getcalendar(userid):
     credentials = getgoogle(userid)
     
@@ -309,13 +335,21 @@ def getcalendar(userid):
         start = parseGcalDate(event['start'])
         end = parseGcalDate(event['end'])
         
+        if not isinstance(start, datetime):
+            start = datetime.combine(start, datetime.min.time())
+        if not isinstance(end, datetime):
+            end = datetime.combine(end, datetime.max.time())
+        
+        start += timedelta(minutes=3)
+        end -= timedelta(minutes=3)
+            
         startDate = start
         endDate = end
         today = date.today()
         if isinstance(startDate, datetime):
-            startDate = startDate.date()
+            startDate = (startDate + timedelta(minutes=3)).date()
         if isinstance(endDate, datetime):
-            endDate = endDate.date()
+            endDate = (endDate - timedelta(minutes=3)).date()
         
         # If some portion of the event takes place today
         if startDate <= today and endDate >= today:
@@ -324,14 +358,17 @@ def getcalendar(userid):
             if endDate > today:
                 end = datetime.combine(today, datetime.max.time())
             
-            result.append(feCalEvent(start, end, event['summary']))
+            evt = feCalEvent(start, end, event['summary'])
+            result.append(evt)
             # result.append("%s: %s" % (start, event['summary']))
     # return ["Meeting @ 9am", "Robotics competition", "Swim meet"]
+    # print(result)
     return result
 
 def feCalEvent(start, end, text):
     if not (isinstance(start, datetime) and isinstance(end, datetime)):
         return (text, 0, 24)
+    # print("%s %s %s" % (text, str(start), str(end)))
     return (text, roundHour(start.hour, start.minute), roundHour(end.hour, end.minute))
 
 def roundHour(hour, min):
@@ -348,6 +385,7 @@ def parseGcalDate(d):
         d = None
     return d
 
+@timeout()
 def getemail(userid):
     credentials = getgoogle(userid)
 
@@ -372,11 +410,45 @@ def getemail(userid):
     for msg in messages:
         message = service.users().messages().get(userId='me', id=msg['id']).execute()
         
+        subject = '(untitled)'
+        sender = '(unknown sender)'
         for header in message['payload']['headers']:
             if header['name'].lower() == 'subject':
-                result.append({'title':header['value'], 'snippet':message['snippet']})
+                subject = header['value']
+            if header['name'].lower() == 'from':
+                sender = header['value']
+        result.append({'subject': subject, 'snippet':unescape(message['snippet']), 'sender':sender})
     
     return result
+
+import re, htmlentitydefs
+
+##
+# Removes HTML or XML character references and entities from a text string.
+#
+# @param text The HTML (or XML) source text.
+# @return The plain text, as a Unicode string, if necessary.
+# http://effbot.org/zone/re-sub.htm#unescape-html
+def unescape(text):
+    def fixup(m):
+        text = m.group(0)
+        if text[:2] == "&#":
+            # character reference
+            try:
+                if text[:3] == "&#x":
+                    return unichr(int(text[3:-1], 16))
+                else:
+                    return unichr(int(text[2:-1]))
+            except ValueError:
+                pass
+        else:
+            # named entity
+            try:
+                text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+            except KeyError:
+                pass
+        return text # leave as is
+    return re.sub("&#?\w+;", fixup, text)
     
 
 def get_date_object(date_string):
@@ -401,6 +473,7 @@ def setlocation(zip):
 # http://api.openweathermap.org/data/2.5/weather?zip=12180,us&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
 # http://api.openweathermap.org/data/2.5/forecast?id=5141502&APPID=2d5d020421b0d10dbe30a762c5932f10&units=imperial
 # http://openweathermap.org/weather-conditions
+@timeout()
 def weather():
     zip = 6477
     if len(_users) > 0:
@@ -423,7 +496,7 @@ def weather():
         curDate = datetime.fromtimestamp(sample['dt']).date()
         if curDate > lastSample:
             lastSample = curDate
-            result.append({"icon": convert_icon(sample['weather'][0]['icon']), "temp": sample['main']['temp'], "hi": sample['main']['temp_max'], "lo": sample['main']['temp_min'], "date": curDate})
+            result.append({"icon": convert_icon(sample['weather'][0]['icon'], 'd'), "temp": sample['main']['temp'], "hi": sample['main']['temp_max'], "lo": sample['main']['temp_min'], "date": curDate})
         else:
             result[-1]['hi'] = max(sample['main']['temp_max'], result[-1]['hi'])
             result[-1]['lo'] = min(sample['main']['temp_min'], result[-1]['lo'])
@@ -433,7 +506,9 @@ def weather():
     
     return result
 
-def convert_icon(owm):
+def convert_icon(owm, mytime=None):
+    if mytime != None:
+        owm = owm.replace('d', mytime).replace('n', mytime)
     return {
         '01d': 'B',
         '01n': 'C',
@@ -599,8 +674,11 @@ def initialize():
     _loaddata()
     
     # Create mopidy instances TODO: ADD THIS BACK
-    # for i, val in enumerate(_users):
-    #     _updateMopidy(i)
+    for i, val in enumerate(_users):
+        _updateMopidy(i)
+    
+    import atexit
+    atexit.register(stopall)
 
 def test(testname, val, nominal):
     if val == nominal:

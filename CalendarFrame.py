@@ -28,8 +28,9 @@ class CalendarFrame(Frame):
         self.canvas.place(x=80,y=0)
         
         MIN_FULL_DAY = 20
-        earliest_event = 7
-        latest_event = 16
+        MAX_HOURS = 14
+        earliest_event = 11
+        latest_event = 1
         
         for event in events:
             if event[2] - event[1] < MIN_FULL_DAY:
@@ -40,6 +41,9 @@ class CalendarFrame(Frame):
         import math
         earliest_event = int(math.floor(earliest_event))
         latest_event = int(math.ceil(latest_event))
+        
+        if latest_event - earliest_event > MAX_HOURS:
+            latest_event = earliest_event + MAX_HOURS
         
         for num in range(0, latest_event - earliest_event + 1):
             tme = earliest_event + num
@@ -67,6 +71,8 @@ class CalendarFrame(Frame):
                         width = 150)
                 allDayIdx += 1
             else:
+                if endTime > latest_event:
+                    endTime = latest_event
                 self.canvas.create_rectangle(
                     3,
                     14 + (((startTime - earliest_event) * 35)),

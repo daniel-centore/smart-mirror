@@ -24,9 +24,11 @@ def onKeyPress(event):
 	global currentScreen, passcodeEntryNum, passcodeEntryStr, selectedUser, userPasscodes, currentWidget
 	
 	if(currentScreen == "Home" and (event.char == "1" or event.char == "2" or event.char == "3" or event.char == "4" or event.char == "5")):
-		buttons.enterPasscodeScreen();
-		currentScreen = "Passcode"
-		selectedUser = int(event.char) - 1
+		sU = int(event.char) - 1
+		if sU < len(mirrorbackend.getUsers()):
+			selectedUser = sU
+			buttons.enterPasscodeScreen();
+			currentScreen = "Passcode"
 	elif(currentScreen == "Home" and event.char == "6"):
 		currentScreen = "GenSettings"
 		genSettings.place(x=0,y=0);
@@ -55,6 +57,7 @@ def onKeyPress(event):
 				buttons.enterUserScreen();
 				calendar.updateForUser(mirrorbackend.getUsers()[selectedUser].getCalendarEvents())
 				email.updateForUser(mirrorbackend.getUsers()[selectedUser].getEmails())
+				music.updateForUser(mirrorbackend.getUsers()[selectedUser])
 			else:
 				buttons.enterHomeScreen()
 				currentScreen = "Home"
@@ -62,26 +65,41 @@ def onKeyPress(event):
 			passcodeEntryNum = 0;
 			passcodeEntryStr = ""
 	elif(currentScreen == "User"):
-		if(event.char == "5"):
-			if(currentWidget == ""):
+		if(currentWidget == ""):
+			if(event.char == "5"):
 				currentScreen = "Home"
 				buttons.enterHomeScreen()
 				updateWidgets()
 				selectedUser = 0;
 				email.clearEmails();
 				calendar.clearCalendar();
-			elif(currentWidget == "Music"):
+				music.clearMusic();
+				logout()
+			elif(event.char == "3"):
 				currentScreen = "User"
-				currentWidget = ""
-				buttons.enterUserScreen();
-		elif(event.char == "3"):
-			currentScreen = "User"
-			currentWidget = "Music"
-			buttons.enterMusicWidget()
-		elif(event.char == "6"):
-			currentScreen = "UserSettings"
-			userSettings.place(x=0,y=0);
-			buttons.enterSettingsScreen();
+				currentWidget = "Music"
+				music.reload()
+				buttons.enterMusicWidget()
+			elif(event.char == "6"):
+				currentScreen = "UserSettings"
+				userSettings.place(x=0,y=0);
+				buttons.enterSettingsScreen();
+		elif(currentWidget == "Music"):
+			if(event.char == "1"):
+				music.startPause(mirrorbackend.getUsers()[selectedUser])
+			elif(event.char == "2"):
+				music.nextSong(mirrorbackend.getUsers()[selectedUser])
+			elif(event.char == "4"):
+				music.moveArrowUp()
+			elif(event.char == "3"):
+				music.moveArrowDown()
+			elif(event.char == "5"):
+				if music.select(mirrorbackend.getUsers()[selectedUser]) == False:
+					# If back button has been activated
+					currentScreen = "User"
+					currentWidget = ""
+					buttons.enterUserScreen();
+		
 	elif(currentScreen == "GenSettings"):
 		if(event.char == "1"):
 			genSettings.moveArrowUp()
@@ -105,6 +123,10 @@ def onKeyPress(event):
 			buttons.enterUserScreen();
 			currentScreen = "User"
 
+def logout():
+	import mirrorbackend
+	mirrorbackend.stopall()
+
 def updateTime():
 	global clock
 	clock.updateTime();
@@ -117,26 +139,32 @@ def updateWidgets():
 		else:
 			clock.place_forget()
 			
-		if(mirrorbackend.getUsers()[selectedUser].displayClock()):
-			weather.place(x=50,y=230)
+		if(mirrorbackend.getUsers()[selectedUser].displayWeather()):
+			weather.place(x=50,y=210)
 		else:
 			weather.place_forget()
 			
 		if(mirrorbackend.getUsers()[selectedUser].displayCalendar()):
-			calendar.place(x=20,y=550)
+			calendar.place(x=20,y=510)
 		else:
 			calendar.place_forget()
 			
 		if(mirrorbackend.getUsers()[selectedUser].displayEmail()):
-			email.place(x=10,y=1150)
+			email.place(x=10,y=1090)
 		else:
 			email.place_forget()
+			
+		if(mirrorbackend.getUsers()[selectedUser].displayMusic()):
+			music.place(x=40,y=1610)
+		else:
+			music.place_forget()
 	
 	elif(currentScreen == "Home"):
 		clock.place(x=50,y=50)
 		weather.place(x=50,y=230)
 		calendar.place_forget()
 		email.place_forget()
+		music.place_forget()
 
 def initRoot():
 	root.attributes('-fullscreen', True)
@@ -146,6 +174,7 @@ def initRoot():
 	
 if __name__ == "__main__":
 	
+	import mirrorbackend
 	mirrorbackend.initialize()
 	
 	initRoot();
@@ -156,7 +185,7 @@ if __name__ == "__main__":
 	
 	global weather;
 	weather = WeatherFrame(root, "Weather")
-	weather.place(x=50,y=230)
+	weather.place(x=50,y=210)
 	
 	global buttons;
 	buttons = ButtonFrame(root, "Buttons")
@@ -164,18 +193,23 @@ if __name__ == "__main__":
 	
 	global calendar;
 	calendar = CalendarFrame(root, "Calendar")
+	calendar.place(x=1080, y=1920);
 	
 	global email;
 	email = EmailFrame(root, "Email")
+	email.place(x=1080, y=1920);
 	
 	global music;
 	music = MusicFrame(root, "Music")
+	music.place(x=1080, y=1920);
 	
 	global genSettings;
 	genSettings = GeneralSettingsFrame(root, "General Settings")
+	genSettings.place(x=1080, y=1920);
 	
 	global userSettings;
 	userSettings = UserSettingsFrame(root, "User Settings")
+	userSettings.place(x=1080, y=1920);
 	
 	root.after(500, updateTime)
 	root.mainloop() #Starts the Tkinter and onKeyPress event

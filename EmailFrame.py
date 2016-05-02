@@ -11,7 +11,7 @@ class EmailFrame(Frame):
     
     
     def __init__(self, title, master=None):
-        Frame.__init__(self, width=400, height=550, bg="black")
+        Frame.__init__(self, width=300, height=550, bg="black")
         
         self.canvas = Canvas(self, width=300, height=430, bg="black", bd=0, relief='ridge', borderwidth=0, highlightthickness=0)
         self.canvas.place(x=0,y=30)
@@ -28,7 +28,7 @@ class EmailFrame(Frame):
         self.canvas.create_line(0, 1+((self.currentEmail*85)), 300, 1+((self.currentEmail*85)), fill="white")
         Label(self, text=sender, font=("SFNS Display Bold", 11), bg="black" , foreground="white", anchor=W).place(y=33+(self.currentEmail*85), x=0)
         Label(self, text=subject, font=("SFNS Display", 11), bg="black", foreground="white", anchor=W).place(y=53+(self.currentEmail*85), x=0)
-        tbox = Text(self, height=2, width=30, bg="black", font=("SFNS Display", 11), foreground="gray", bd=0)
+        tbox = Text(self, height=2, width=30, bg="black", font=("SFNS Display", 11), foreground="gray", bd=0, wrap=WORD)
         tbox.place(y=75+(self.currentEmail*85), x=0 )
         tbox.insert(INSERT, body)
         self.currentEmail += 1;

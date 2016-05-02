@@ -43,6 +43,7 @@ class UserObject(object):
         self._music = user.store.music
         self.id = id
     
+    # TODO MAKE THESE UPDATE THE STORE
     def username():
         def fget(self):
             return self._username
@@ -115,11 +116,12 @@ class UserObject(object):
         #return [("IED Class", 9,12),("Multivariable", 12,13),("Colorguard Practice", 19,21)]
     
     def getEmails(self):
-        return [("Mailsvs-l@lists.rpi.edu", "RPI Student PACKAGE RECEIPT NOTICE", "Dear Pybus, Christopher William, Your package has arrived at RPI! Please retrieve your package at the student"),
-                ("Abigail Agosto", "RE: CMADD RFF", "Good afternoon MIDN Pybus, The CMADD Party RFF was approved for up to $85. Attached is the edited RFF with."),
-                ("Matt Gerrard", "[navyship] POW 4 APR 2016", "Ships Company, Attached is the POW for this upcoming week. Very respectfully, MIDN 3C Gerrard OPS SCPO"),
-                ("Morning Mail", "Morning Mail 04-07-2016", "Morning Mail is the official news and announcements sharing service of Rensselaer Polytechnic Institute"),
-                ("William Ash", "[navyship] Ships Company Data", "Ships Company, This year is coming to a close and we would like to collect data on what each MIDN did throughout")]
+        import mirrorbackend
+        source = mirrorbackend.getemail(self.id)[:5]
+        res = []
+        for s in source:
+            res.append((s['sender'], s['subject'], s['snippet']))
+        return res
         
     
     def verifyPasscode(self, passcode):
@@ -142,3 +144,36 @@ class UserObject(object):
     
     def displayMusic(self):
         return self.music
+
+    def getPlaylists(self):
+        import mirrorbackend
+        return mirrorbackend.listplaylists(self.id)
+    
+    def getSongs(self, playlist):
+        import mirrorbackend
+        return mirrorbackend.listsongs(self.id, playlist)
+      
+    #Will return the entire song object noted above
+    def playSong(self, playlist, songObject):
+        import mirrorbackend
+        mirrorbackend.playsong(self.id, playlist, songObject['file'])
+    
+    def pause(self):
+        import mirrorbackend
+        mirrorbackend.pause(self.id)
+        
+    def skip(self):
+        import mirrorbackend
+        mirrorbackend.next(self.id)
+    
+    def shuffleplaylist(self, playlist):
+        import mirrorbackend
+        mirrorbackend.shuffleplaylist(self.id, playlist)
+    
+    def currentsong(self):
+        import mirrorbackend
+        return mirrorbackend.currentsong(self.id)
+
+    def logout(self):
+        import mirrorbackend
+        mirrorbackend.stop(self.id)

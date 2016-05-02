@@ -30,7 +30,7 @@ class ButtonFrame(Frame):
         for num in range(0,5):
             self.buttons_text.append(StringVar())
             self.buttons_labels.append( Label(self, textvariable=self.buttons_text[num], font=("SFNS Display", 18), bg="black", foreground="white"))
-            self.buttons_labels[num].place(x=(120 + (num*180)), y=150, width=175)
+            self.buttons_labels[num].place(x=(0 + (num*180)), y=150, width=175)
         
         num = 0
         for user in mirrorbackend.getUsers():
@@ -59,7 +59,8 @@ class ButtonFrame(Frame):
         self.instruct_text.set("")
         
     def enterMusicWidget(self):
-        labels = ["Start/Pause", "Next Song", "Move Down", "Select", "Back"]
+        # labels = ["Start/Pause", "Next Song", "Move Down", "Select", "Back"]
+        labels = ["Play/Pause", "Skip Song", "Down", "Up", "Select"]
         for num in range(0,5):
             self.buttons_text[num].set(labels[num])
             
