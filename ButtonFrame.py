@@ -45,14 +45,14 @@ class ButtonFrame(Frame):
         self.instruct_text.set("Please enter your four digit passcode...")
         
     def enterUserScreen(self):
-        labels = ["", "", "Music", "", "Log Out"]
+        labels = [u"\u2022", u"\u2022", "Music", u"\u2022", "Log Out"]
         for num in range(0,5):
             self.buttons_text[num].set(labels[num])
             
         self.instruct_text.set("Good morning!")
         
     def enterSettingsScreen(self):
-        labels = ["Up", "Down", "Select", "", "Exit"]
+        labels = ["Up", "Down", "Select", u"\u2022", "Exit"]
         for num in range(0,5):
             self.buttons_text[num].set(labels[num])
             

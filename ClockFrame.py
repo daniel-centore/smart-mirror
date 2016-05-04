@@ -22,7 +22,7 @@ class ClockFrame(Frame):
         label_time.place(x=0, y=0, anchor=NW)
     
         label_date_text = StringVar()
-        label_date = Label(self, textvariable=label_date_text, background='black', foreground="gray", bd=0, font=("SFNS Display", 16), anchor=W, justify=LEFT)
+        label_date = Label(self, textvariable=label_date_text, background='black', foreground="white", bd=0, font=("SFNS Display", 16), anchor=W, justify=LEFT)
         label_date_text.set(HelperMethods.getFormattedDate())
         label_date.place(x=0, y=70, anchor=NW)
      

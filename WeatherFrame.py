@@ -42,7 +42,7 @@ class WeatherFrame(Frame):
         main_icon.set(u"%d\xb0" % weatherDays[0]['temp'])
         main_icon_label.place(x=130,y=-5)
         
-        main_highlow_label = Label(self, textvariable=main_highlow, font=("SFNS Display", 18), bg="black", foreground="gray")
+        main_highlow_label = Label(self, textvariable=main_highlow, font=("SFNS Display", 18), bg="black", foreground="white")
         main_highlow.set(u"( %d\xb0 | %d\xb0 )" % (weatherDays[0]['hi'], weatherDays[0]['lo']))
         main_highlow_label.place(x=100,y=50)
         
@@ -56,16 +56,16 @@ class WeatherFrame(Frame):
         for num in range(0, len(weatherDays) - 1):
             day_labels.append(self.getNextDay(currentday))
             currentday = day_labels[num]
-            day_labels[num] = Label(self, text=currentday, font=("SFNS Display", 14), bg="black", foreground="gray", anchor=E)
+            day_labels[num] = Label(self, text=currentday, font=("SFNS Display", 14), bg="black", foreground="white", anchor=E)
             day_labels[num].place(y=(100 + (num*30)), x=15, width=50)
             
-            day_icons.append(Label(self, text=weatherDays[num+1]['icon'], font=("Meteocons", 14), bg="black", foreground="gray") )
+            day_icons.append(Label(self, text=weatherDays[num+1]['icon'], font=("Meteocons", 14), bg="black", foreground="white") )
             day_icons[num].place(y=(102 + (num*30)), x = 70)
             
-            day_temps.append(Label(self, text=u"%d\xb0"%weatherDays[num+1]['temp'], font=("SFNS Display", 14), bg="black", foreground="gray"))
+            day_temps.append(Label(self, text=u"%d\xb0"%weatherDays[num+1]['temp'], font=("SFNS Display", 14), bg="black", foreground="white"))
             day_temps[num].place(y=(100 + (num*30)), x = 100)
             
-            day_hilows.append(Label(self, text=u"( %d\xb0 | %d\xb0 )" % (weatherDays[num+1]['hi'], weatherDays[num+1]['lo']), font=("SFNS Display", 12), bg="black", foreground="gray"))
+            day_hilows.append(Label(self, text=u"( %d\xb0 | %d\xb0 )" % (weatherDays[num+1]['hi'], weatherDays[num+1]['lo']), font=("SFNS Display", 12), bg="black", foreground="white"))
             day_hilows[num].place(y=(102 + (num*30)), x = 140)
         
     def getNextDay(self, day):

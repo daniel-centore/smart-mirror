@@ -49,11 +49,11 @@ class CalendarFrame(Frame):
             tme = earliest_event + num
             txt = ((str(tme) + " am") if 1 <= tme < 12 else ("12 pm" if (tme == 0 or tme == 12) else (str(tme - 12) + " pm")))
             
-            Label(self, text=txt, font=("SFNS Display", 13), bg="black", foreground="gray", anchor=E).place(y=((num*35)), x=15, width=60)
+            Label(self, text=txt, font=("SFNS Display", 13), bg="black", foreground="white", anchor=E).place(y=((num*35)), x=15, width=60)
             lineY = 13 + ((num*35))
             self.canvas.create_line(0, lineY, 200, lineY, fill="white")
         
-        Label(self, text="All Day", font=("SFNS Display", 13), bg="black", foreground="gray", anchor=E).place(y=(((latest_event - earliest_event + 1)*35)), x=15, width=60)
+        Label(self, text="All Day", font=("SFNS Display", 13), bg="black", foreground="white", anchor=E).place(y=(((latest_event - earliest_event + 1)*35)), x=15, width=60)
         
         
         allDayIdx = 0

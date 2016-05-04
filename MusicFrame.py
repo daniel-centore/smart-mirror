@@ -164,5 +164,6 @@ class MusicFrame(Frame):
         song = self.currentuser.currentsong()
         if len(song) == 0:
             return
-        curr = "%s - %s" % (song.get("title"), song.get("artist"))
+        # curr = "%s - %s" % (song.get("title"), song.get("artist"))
+        curr = song.get("title")
         self.currentlyPlaying.set(curr)

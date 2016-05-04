@@ -305,7 +305,6 @@ def gettasks(userid):
             elif len(item['title'].strip()) > 0:
                 result.append(item['title'])
     return result
-    # return ["Buy milk", "Go to store", "Call grandma"]
 
 # Returns a person's calendar appointments
 @timeout()
@@ -332,7 +331,6 @@ def getcalendar(userid):
     if not events:
         return result       # No events found
     for event in events:
-        # start = event['start'].get('dateTime', event['start'].get('date'))
         start = parseGcalDate(event['start'])
         end = parseGcalDate(event['end'])
         
